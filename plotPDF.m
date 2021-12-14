@@ -1,0 +1,12 @@
+clear;
+clc;
+x = 0:0.1:500;
+lamda = 13/512;
+sigma = 1e-2;
+alpha = 1e-8;
+beta = 1e-8;
+% y = lamda/sqrt(sigma*2*pi)*exp(-(x-1).*(x-1)/(2*sigma))+(1-lamda)./(1e8*(x-100)).*exp(-1e-8*(x-100));
+syms x;
+fx = 1/sqrt(sigma*2*pi)*exp(-(x-1).*(x-1)/(2*sigma));%(beta^alpha)/gamma(alpha)*((x).^(alpha-1)).*exp(-beta*(x));
+t = int(fx,0,1);
+plot(x,fx);

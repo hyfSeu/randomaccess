@@ -136,6 +136,21 @@ def sparse_baysian_learning(A,y,iterNum,alpha0,a,b):
 
 
 if __name__ == '__main__':
+    '''
+    K: 用户总数
+    M: 天线数
+    radius: 小区半径
+    Ka: 活跃用户数
+    L: 压缩后的向量长度
+    N: 压缩前的向量长度
+    p: 发送信号功率
+    d0: 参考距离
+    pl_exp: 路径损耗因子
+    a: gamma分布参数1
+    b: gamma分布参数2
+    iterNum: 迭代循环次数
+    alpha0: 噪声方差的倒数
+    '''
     K = 1024
     M = 128
     radius = 1000

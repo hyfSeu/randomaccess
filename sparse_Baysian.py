@@ -131,6 +131,48 @@ def sparse_baysian_learning(A,y,iterNum,alpha0,a,b):
         u = np.dot(np.dot(alpha0*sigma,A.conj().T),y)
         alpha = (1+2*a)/((np.diag(sigma)).reshape(N,1)+((u*u.conj()).sum(axis=1)/M).reshape(N,1)+2*b)
     return u,alpha,sigma
+
+def channel_estimation(A,user_index,K,Ka,M,N,G,a,b,iterNum,repeatNum,alpha0):
+    '''
+    信道估计函数，在原先稀疏贝叶斯学习的基础上，重复随机发送压缩感知向量，
+    从中选取出现次数最多的前Ka个信道向量作为活跃用户信道向量。
+    这里的出现次数指的是误差不超过5%的估计向量，表示估计结果一致
+    输入参数含义与sparse_baysian_learning相一致
+    输出参数为估计得到的信道矩阵
+    '''
+    u = np.zeros((repeatNum,Ka,M))+1j*np.zeros((repeatNum,Ka,M))
+    channel_list = []
+    estimation_Num = []
+    for i in range(repeatNum):
+        x = get_sparseVector(user_index, Ka, K, N)    #每次重复发送都随机生成稀疏向量
+        #加上方差为1的噪声向量
+        y = np.dot(np.dot(A,x),G)+(np.random.randn(L,M)+1j*np.random.randn(L,M))/np.sqrt(2) 
+        ux,alpha,sigma = sparse_baysian_learning(A, y, iterNum, alpha0, a, b)
+        #选出方差前Ka小的估计结果作为稀疏贝叶斯学习的估计信道值
+        temp = heapq.nsmallest(Ka,range(N),alpha.take)
+        u[i,:,:] = ux[temp,:]
+        for j in range(Ka):
+            flag = 0
+            #遍历信道列表，若误差在5%以内则放入同一信道列表之中
+            for k in range(len(channel_list)):
+                if(sum(np.abs(u[i,j,:]-np.sum(channel_list[k],axis=0)/len(channel_list[k]))/np.abs(u[i,j,:]))/M<=0.05):
+                    channel_list[k].append(u[i,j,:])
+                    flag = 1
+                    break
+            #否则新增信道列表
+            if(flag == 0):
+                channel_list.append([u[i,j,:]])
+    #以下for循环用以统计估计得到的相同信道出现的次数，并求相同信道向量的均值作为信道向量
+    for i in range(len(channel_list)):
+        estimation_Num.append(len(channel_list[i]))
+        channel_list[i] = np.sum(channel_list[i],axis=0)/len(channel_list[i])
+    Inf = 0
+    res = []
+    #以下for循环用以取出出现次数最多的前Ka个信道向量作为输出
+    for i in range(Ka):
+        res.append(channel_list[estimation_Num.index(max(estimation_Num))])
+        estimation_Num[estimation_Num.index(max(estimation_Num))] = Inf
+    return np.array(res)
     
     
 
@@ -150,6 +192,7 @@ if __name__ == '__main__':
     b: gamma分布参数2
     iterNum: 迭代循环次数
     alpha0: 噪声方差的倒数
+    repeatNum: 重复发送次数
     '''
     K = 1024
     M = 128
@@ -164,16 +207,23 @@ if __name__ == '__main__':
     b = 1e-8
     iterNum = 300
     alpha0 = 1
+    repeatNum = 5
+    #获取用户到基站距离
     distance = get_distance(K, radius)
+    #获取真实信道向量
     G = get_Channel(p, distance, d0, pl_exp, K, M)
+    #获取活跃用户下标索引
     user_index = get_active_user(K,Ka)
+    #获取公共压缩感知码本
     A = get_codeBook(L, N)
-    x = get_sparseVector(user_index, Ka, K, N)
-    y = np.dot(np.dot(A,x),G)+(np.random.randn(L,M)+1j*np.random.randn(L,M))/np.sqrt(2)
-    u,alpha,sigma = sparse_baysian_learning(A,y,iterNum,alpha0,a,b)
-    temp = G[user_index,:]
-    temp1 = heapq.nsmallest(Ka,range(N),alpha.take)
-    temp2 = u[temp1,:]
+    #进行信道估计过程
+    channels = channel_estimation(A, user_index, K, Ka, M, N, G, a, b, iterNum, repeatNum, alpha0)
+    # x = get_sparseVector(user_index, Ka, K, N)
+    # y = np.dot(np.dot(A,x),G)+(np.random.randn(L,M)+1j*np.random.randn(L,M))/np.sqrt(2)
+    # u,alpha,sigma = sparse_baysian_learning(A,y,iterNum,alpha0,a,b)
+    # temp = G[user_index,:]
+    # temp1 = heapq.nsmallest(Ka,range(N),alpha.take)
+    # temp2 = u[temp1,:]
     
     
     

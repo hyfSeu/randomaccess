@@ -73,7 +73,7 @@ def get_active_user(K,Ka):
     ''''
     获取活跃用户索引
     '''
-    rd.seed(0)
+    #rd.seed(0)
     user_index = rd.sample(range(K), Ka)
     user_index.sort()
     return user_index
@@ -83,7 +83,7 @@ def get_codeBook(L,N):
     获取独立同分布的公共码本
     L为压缩后的向量尺寸，N为压缩前的向量尺寸
     '''
-    np.random.seed(0)
+    #np.random.seed(0)
     A = (np.random.randn(L,N)+1j*np.random.randn(L,N))/np.sqrt(2)
     return A
 
@@ -155,7 +155,7 @@ def channel_estimation(A,user_index,K,Ka,M,N,G,a,b,iterNum,repeatNum,alpha0):
             flag = 0
             #遍历信道列表，若误差在5%以内则放入同一信道列表之中
             for k in range(len(channel_list)):
-                if(sum(np.abs(u[i,j,:]-np.sum(channel_list[k],axis=0)/len(channel_list[k]))/np.abs(u[i,j,:]))/M<=0.05):
+                if(sum(np.abs(u[i,j,:]-np.sum(channel_list[k],axis=0)/len(channel_list[k]))/np.abs(u[i,j,:]))/M<=0.1):
                     channel_list[k].append(u[i,j,:])
                     flag = 1
                     break
@@ -173,7 +173,26 @@ def channel_estimation(A,user_index,K,Ka,M,N,G,a,b,iterNum,repeatNum,alpha0):
         res.append(channel_list[estimation_Num.index(max(estimation_Num))])
         estimation_Num[estimation_Num.index(max(estimation_Num))] = Inf
     return np.array(res)
-    
+
+def MSE(H,G):
+    '''
+    均方误差计算函数，输入参数为真实信道与估计信道，计算二者的均方误差与相对误差
+    '''
+    if(len(H)==0 or len(G)==0 or np.shape(H)!=np.shape(G)):
+        return np.zeros((0,0))
+    else:
+        temp1 = (np.dot(H,H.conj().T)).diagonal()
+        temp2 = (np.dot(G,G.conj().T)).diagonal()
+        H = H[temp1.argsort()]
+        G = G[temp2.argsort()]
+        mse = np.average((H-G)*((H-G).conj()),axis=1)
+        error_ratio = np.sqrt(mse)/(np.average(np.abs(G),axis=1))
+        return mse, error_ratio
+
+'''def VAMP(A,y,iterNum,mu,mu0):
+    [M,Ka] = np.shape(A)
+    L = np.shape(y)[1]
+    '''
     
 
 
@@ -217,13 +236,24 @@ if __name__ == '__main__':
     #获取公共压缩感知码本
     A = get_codeBook(L, N)
     #进行信道估计过程
+    print("start time:")
+    print(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
     channels = channel_estimation(A, user_index, K, Ka, M, N, G, a, b, iterNum, repeatNum, alpha0)
+    mse,error_ratio = MSE(channels,G[user_index,:])
+    print("end time:")
+    print(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
     # x = get_sparseVector(user_index, Ka, K, N)
     # y = np.dot(np.dot(A,x),G)+(np.random.randn(L,M)+1j*np.random.randn(L,M))/np.sqrt(2)
     # u,alpha,sigma = sparse_baysian_learning(A,y,iterNum,alpha0,a,b)
     # temp = G[user_index,:]
     # temp1 = heapq.nsmallest(Ka,range(N),alpha.take)
     # temp2 = u[temp1,:]
+    plt.plot(np.array(range(Ka)),np.real(mse),label='MSE')
+    plt.plot(np.array(range(Ka)),np.real(error_ratio),label='Error_ratio')
+    plt.xlabel('user_index')
+    plt.ylim([0,1])
+    plt.legend()
+    plt.show()
     
     
     

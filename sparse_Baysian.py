@@ -188,6 +188,15 @@ def MSE(H,G):
         mse = np.average((H-G)*((H-G).conj()),axis=1)
         error_ratio = np.sqrt(mse)/(np.average(np.abs(G),axis=1))
         return mse, error_ratio
+    
+def MMSE_estimation(H,y,mu0):
+    (M1,Ka) = np.shape(H)
+    (M2,L) = np.shape(y)
+    if(M1 == 0 or Ka == 0 or M2 == 0 or L==0 or M1 != M2):
+        return np.zeros((0,0))
+    C = np.dot(np.linalg.inv(np.dot(H,H.conj().T)+mu0*np.eye(M1)),H)
+    x = np.dot(C.conj().T,y)
+    return x
 
 '''def VAMP(A,y,iterNum,mu,mu0):
     [M,Ka] = np.shape(A)
@@ -218,6 +227,7 @@ if __name__ == '__main__':
     radius = 1000
     Ka = 24
     L = 100
+    Lx = 128
     N = 512
     p = 17
     d0 = 10
@@ -235,6 +245,10 @@ if __name__ == '__main__':
     user_index = get_active_user(K,Ka)
     #获取公共压缩感知码本
     A = get_codeBook(L, N)
+    #数据信号发送和接收
+    message = np.zeros((K,Lx))+1j*np.zeros((K,Lx))
+    message[user_index,:] = ((1-2*np.random.randint(2,size=(Ka,Lx)))+1j*(1-2*np.random.randint(2,size=(Ka,Lx))))/np.sqrt(2)
+    y_n = np.dot(G.T,message)+(np.random.randn(M,Lx)+1j*np.random.randn(M,Lx))/np.sqrt(2) 
     #进行信道估计过程
     print("start time:")
     print(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
@@ -254,6 +268,8 @@ if __name__ == '__main__':
     plt.ylim([0,1])
     plt.legend()
     plt.show()
+    x = MMSE_estimation(channels.T, y_n, 1/alpha0)
+    
     
     
     

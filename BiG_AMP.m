@@ -1,22 +1,23 @@
 clear;
 clc;
+rng(7);
 
 %% 系统初始化
-K = 256;                                         %总用户数
-M = 64;                                         %天线数
+K = 128;                                         %总用户数
+M = 4096;                                         %天线数
 Ka = floor(0.1*K*M);                                         %活跃用户数
-L = 128;                                          %信号长度
+L = 64;                                          %信号长度
 Lk = 25;                                         %信号路径数量最大值
 mu = -3.7;                                       %路径损耗因子
 beta = 0.05;                                        %damping系数
-tao = 1e-6;                                      %迭代终止阈值
-IterNum = 1500;                                  %AMP算法迭代次数
+tao = 1e-8;                                      %迭代终止阈值
+IterNum = 8000;                                  %AMP算法迭代次数
 IterMin = 30;
 stepWindow = 1;                                 %size of stepWindw
 valOpt = [];                                     %set of succeed step results
 stepTol = -1;
-stepMin = 0.05;
-stepMax = 0.5;
+stepMin = 0.15;
+stepMax = 0.65;
 stepIncr = 1.1;
 stepDecr = 0.5;
 maxStepDecr = 0.5;   
@@ -32,9 +33,10 @@ HvarMin = 0;                                    %% warning!!!
 XvarMin = 0;                                    %% warning!!!
 user_index = randperm(K*M,Ka);                     %随机获取用户索引
 user_index = sort(user_index);
+adaptStep = true;
 % theta = 2*pi*rand(Nc,1);
 distance = 1000*rand(K,1);                       %各用户到基站的距离，方圆1Km
-lamda = 100*ones(K,1);                 %(distance.^mu).*10^13.4;                 %大尺度参数，这个在基站是已知的
+lamda = ones(K,1);                 %(distance.^mu).*10^13.4;                 %大尺度参数，这个在基站是已知的
 G = sqrt(diag(lamda))*(randn(K,M)+1j*randn(K,M))/sqrt(2);     %实际的信道矩阵
 % G = G';
 supp = zeros(K,M);                               %支持矩阵，表面接收信道矩阵非零元素所在，1表示活跃，0表示静默
@@ -139,7 +141,6 @@ while ~stop
    % snew.
    if pass
        beta = stepIncr*beta;
-       
        shatOpt = shat;
        svarOpt = svar;
        XhatBarOpt = XhatBar;
@@ -205,7 +206,7 @@ while ~stop
        ZhatOpt = Zhat;
    end
    
-   if(it>1)
+   if(it>1 && adaptStep)
        step = beta;
    end
    shat = (1-step)*shatOpt+step*shatNew;
